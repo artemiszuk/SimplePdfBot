@@ -1,1 +1,4 @@
 account.session
+poetry.lock
+pyproject.toml
+.breakpoints
