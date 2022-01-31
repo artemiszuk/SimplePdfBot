@@ -14,9 +14,12 @@ from pyrogram.types import (
 )
 
 
-class Var(object):
+
+
+class Var((object)):
     AUTH_USERS = dict()
-    filename = dict()
+    filename = {}
+
 
 
 mongouri = os.environ.get("MONGO_URI")
@@ -84,19 +87,17 @@ async def button(client, cmd: CallbackQuery):
         os.remove(last_photo)
         filelist = await get_file_list(user_id)
         count = len(filelist)
-        msg = ""
-
         if count > 0:
-            buttons_markup = []
-            for file in filelist:
-                msg += f"\n`🖼 {os.path.basename(file)}`"
+            msg = "".join(f"\n`🖼 {os.path.basename(file)}`" for file in filelist)
 
-            buttons_markup.append(
+            buttons_markup = [
                 [
-                    InlineKeyboardButton(f"Close ❌", callback_data="close"),
-                    InlineKeyboardButton(f"Remove Last 🗑", callback_data="rmlast"),
+                    InlineKeyboardButton('Close ❌', callback_data="close"),
+                    InlineKeyboardButton(
+                        'Remove Last 🗑', callback_data="rmlast"
+                    ),
                 ]
-            )
+            ]
 
             await cmd.message.edit(
                 f"__Below Are list of photos sent by you__ 🔽\n{msg}",
@@ -125,10 +126,7 @@ async def start(client, message):
 
 def keyExists(user_id):
     x = mycol.find_one({"_id": user_id})
-    if x is None:
-        return False
-    else:
-        return True
+    return x is not None
 
 
 @app.on_message(filters.command(["auth"]) & CustomFilters.owner)
@@ -155,15 +153,14 @@ async def auth(client, message):
         if len(message.text.split()) == 1:
             return await message.reply("ID Field Empty")
         id = int(message.text.split()[-1])
-        if id in Var.AUTH_USERS["users"]:
-            myquery = {"_id": "1"}
-            newvalues = {"$pull": {"users": id}}
-            mycol.update_one(myquery, newvalues)
-            Var.AUTH_USERS = mycol.find_one({"_id": "1"})
-            print("New list :", Var.AUTH_USERS["users"])
-            await message.reply("User Un-Authenticated")
-        else:
+        if id not in Var.AUTH_USERS["users"]:
             return await message.reply("User does not exist")
+        myquery = {"_id": "1"}
+        newvalues = {"$pull": {"users": id}}
+        mycol.update_one(myquery, newvalues)
+        Var.AUTH_USERS = mycol.find_one({"_id": "1"})
+        print("New list :", Var.AUTH_USERS["users"])
+        await message.reply("User Un-Authenticated")
     except Exception as e:
         await message.reply(str(e))
 
@@ -222,18 +219,14 @@ async def countfiles(client, message):
     user_id = message.from_user.id
     filelist = await get_file_list(user_id)
     count = len(filelist)
-    buttons_markup = []
-    msg = ""
     if count > 0:
-        for file in filelist:
-            msg += f"\n`🖼 {os.path.basename(file)}`"
-
-        buttons_markup.append(
+        msg = "".join(f"\n`🖼 {os.path.basename(file)}`" for file in filelist)
+        buttons_markup = [
             [
                 InlineKeyboardButton("Close ❌", callback_data="close"),
-                InlineKeyboardButton(f"Remove Last 🗑", callback_data="rmlast"),
+                InlineKeyboardButton('Remove Last 🗑', callback_data="rmlast"),
             ]
-        )
+        ]
 
         await bot_msg.edit(
             f"__Below Are list of photos sent by you__ 🔽\n{msg}",
@@ -244,10 +237,11 @@ async def countfiles(client, message):
 
 
 async def get_file_list(user_id):
-    filelist = (
-        os.listdir(f"Photos/{user_id}") if os.path.isdir(f"Photos/{user_id}") else []
+    return (
+        os.listdir(f"Photos/{user_id}")
+        if os.path.isdir(f"Photos/{user_id}")
+        else []
     )
-    return filelist
 
 
 @app.on_message(
@@ -273,7 +267,7 @@ async def ondone(client, message):
         for file in filelist:
             flist.append(f"Photos/{user_id}/{file}")
         with open(f"{pdfname}.pdf", "wb") as f:
-            f.write(img2pdf.convert([i for i in flist]))
+            f.write(img2pdf.convert(list(flist)))
     except Exception as e:
         print(e)
         await bot_msg.edit(str(e))
