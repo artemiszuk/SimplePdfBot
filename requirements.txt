@@ -1,0 +1,7 @@
+pyromod
+dnspython
+Pyrogram
+pymongo
+TgCrypto
+img2pdf
+pykeyboard
