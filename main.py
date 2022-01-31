@@ -16,7 +16,6 @@ from pyrogram.types import (
 
 class Var(object):
     AUTH_USERS = dict()
-    filename = dict()
 
 
 mongouri = os.environ.get("MONGO_URI")
@@ -208,7 +207,6 @@ async def onname(client, message):
         mycol.insert_one({"_id": user_id, "fname": namef.text})
     x = mycol.find_one({"_id": user_id})
     print("Filename for ", user_id, "=", x)
-    Var.filename[user_id] = x["fname"]
 
 
 @app.on_message(
