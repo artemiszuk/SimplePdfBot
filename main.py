@@ -5,6 +5,7 @@ import asyncio
 import pymongo
 import subprocess
 from pyromod import listen
+from tools import str_to_b64, b64_to_str, retrieve, get_file_list
 from pyrogram import Client, filters, errors, idle
 from pyrogram.types import (
     ReplyKeyboardMarkup,
@@ -16,6 +17,7 @@ from pyrogram.types import (
 
 class Var(object):
     AUTH_USERS = dict()
+    log_c = int(os.environ.get("LOG_CHANNEL"))
 
 
 mongouri = os.environ.get("MONGO_URI")
@@ -59,7 +61,7 @@ async def button(client, cmd: CallbackQuery):
             Messages.helpm,
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("Back ◀", callback_data="start")]]
-            ),
+            )
         )
     elif "start" in cb_data:
         await cmd.message.edit(
@@ -109,17 +111,25 @@ async def button(client, cmd: CallbackQuery):
     filters.command(["start"]) & (CustomFilters.auth_users | CustomFilters.owner)
 )
 async def start(client, message):
-    await message.reply(
-        Messages.startm,
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton("Help ❓", callback_data="help"),
-                    InlineKeyboardButton("Close ❌", callback_data="close"),
-                ]
-            ]
-        ),
-    )
+    if "_" not in message.text:
+      await message.reply(
+          Messages.startm,
+          reply_markup=InlineKeyboardMarkup(
+              [
+                  [
+                      InlineKeyboardButton("Help ❓", callback_data="help"),
+                      InlineKeyboardButton("Close ❌", callback_data="close"),
+                  ]
+              ]
+          )
+      )
+    else:
+      encoded_string = message.text.split("_")[-1]
+      file_id,share_link = await retrieve(app,Var.log_c,encoded_string)
+      await message.reply_document(
+        file_id,
+        caption = f"[(. ❛ ᴗ ❛.) Share Link 📝]({share_link})"
+      )
 
 
 def keyExists(user_id):
@@ -241,12 +251,6 @@ async def countfiles(client, message):
         await bot_msg.edit(f"Number of images from you : {count}")
 
 
-async def get_file_list(user_id):
-    filelist = (
-        os.listdir(f"Photos/{user_id}") if os.path.isdir(f"Photos/{user_id}") else []
-    )
-    return filelist
-
 
 @app.on_message(
     filters.command(["done"])
@@ -255,7 +259,8 @@ async def get_file_list(user_id):
 )
 async def ondone(client, message):
     user_id = message.from_user.id
-    bot_msg = await message.reply("__Checking__")
+    bot_msg = await message.reply("__Checking...__")
+    await asyncio.sleep(3)
     if not os.path.isdir(f"Photos/{user_id}"):
         await bot_msg.edit("No Photos sent by you !")
         return
@@ -277,14 +282,27 @@ async def ondone(client, message):
         await bot_msg.edit(str(e))
         os.remove(f"{pdfname}.pdf")
     else:
-        await asyncio.sleep(3)
         await bot_msg.edit(f"Created Pdf with {len(flist)} files ")
         await asyncio.sleep(3)
         await bot_msg.edit("Uploading ...")
-        await message.reply_document(f"{pdfname}.pdf", thumb=flist[0])
+        doc = await app.send_document(
+              Var.log_c,
+              f"{pdfname}.pdf", 
+              thumb=flist[0],
+              )
+        await doc.reply(f"__Pdf Requested By [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",disable_web_page_preview=True)
+        
+        encoded_string = str_to_b64(str(doc.message_id))
+        file_id,share_link = await retrieve(app,Var.log_c,encoded_string)
+        await asyncio.sleep(1)
+        await message.reply_document(
+          file_id,
+          caption = f"[(. ❛ ᴗ ❛.) Share Link 📝]({share_link})"
+        )
         await bot_msg.delete()
         os.remove(f"{pdfname}.pdf")
         shutil.rmtree(f"Photos/{user_id}/")
+
 
 
 app.run()
