@@ -2,11 +2,12 @@ import os
 import shutil
 import img2pdf
 import asyncio
-import pymongo
+from handlers.database import db
+from pylovepdf.ilovepdf import ILovePdf
 import subprocess
 from pyromod import listen
-from tools import str_to_b64, b64_to_str, retrieve, get_file_list
-from pyrogram import Client, filters, errors, idle
+from handlers.tools import str_to_b64, b64_to_str, retrieve, get_file_list
+from pyrogram import Client, filters, errors, idle, errors
 from pyrogram.types import (
     ReplyKeyboardMarkup,
     InlineKeyboardMarkup,
@@ -15,42 +16,42 @@ from pyrogram.types import (
 )
 
 
-class Var(object):
-    AUTH_USERS = dict()
-    log_c = int(os.environ.get("LOG_CHANNEL"))
-
-
-mongouri = os.environ.get("MONGO_URI")
-
-myclient = pymongo.MongoClient(mongouri)
-mydb = myclient["mydatabase"]
-mycol = mydb["pdfbot"]
-print(mydb.list_collection_names())
-Var.AUTH_USERS = mycol.find_one()
-print(Var.AUTH_USERS["users"])
-
 api_id = int(os.environ.get("API_ID"))
 api_hash = os.environ.get("API_HASH")
 bot_token = os.environ.get("BOT_TOKEN")
 
-#p = subprocess.Popen(["python3", "-m", "http.server"])
+# p = subprocess.Popen(["python3", "-m", "http.server"])
 app = Client("account", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
-print("Starting Bot")
+
+
+
+class Var(object):
+    AUTH_USERS = []
+    log_c = int(os.environ.get("LOG_CHANNEL"))
+    pdf_api = os.environ.get("ILOVEPDF_API")
 
 
 class Messages:
     startm = "**📌MAIN MENU**\n\nHi ! This is PDF Bot \n\n__Click Help for how to use__"
-    helpm = "I can convert images into pdf file. Send or Forward photos. When sending is completed click done button to get your PDF file\n\nSend /done when you are done sending all photos.\nTo check number of photos and delete photos just use /count \nTo Set Custom FileName use /filename"
+    helpm = "I can convert images into pdf file. Send or Forward photos. When sending is completed click done button to get your PDF file\n\nSend /done when you are done sending all photos.\nTo check number of photos and delete photos just use /count \nTo Set Custom FileName use /filename\n/compress : Reply to Pdf to compress [Uses api from ILovePdf]"
 
 
 class CustomFilters:
     auth_users = filters.create(
-        lambda _, __, message: message.from_user.id in Var.AUTH_USERS["users"]
+        lambda _, __, message: message.from_user.id in Var.AUTH_USERS
     )
     owner = filters.create(
         lambda _, __, message: str(message.from_user.id) in ["1645049777"]
     )
+
+
+async def init():
+    print("-------------------------------------------")
+    print("Initializing User list")
+    Var.AUTH_USERS = list(await db.get_all_users())
+    print("Authenticated Users List = ", Var.AUTH_USERS)
+    print("-------------------------------------------")
 
 
 @app.on_callback_query()
@@ -61,7 +62,7 @@ async def button(client, cmd: CallbackQuery):
             Messages.helpm,
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("Back ◀", callback_data="start")]]
-            )
+            ),
         )
     elif "start" in cb_data:
         await cmd.message.edit(
@@ -112,32 +113,23 @@ async def button(client, cmd: CallbackQuery):
 )
 async def start(client, message):
     if "_" not in message.text:
-      await message.reply(
-          Messages.startm,
-          reply_markup=InlineKeyboardMarkup(
-              [
-                  [
-                      InlineKeyboardButton("Help ❓", callback_data="help"),
-                      InlineKeyboardButton("Close ❌", callback_data="close"),
-                  ]
-              ]
-          )
-      )
+        await message.reply(
+            Messages.startm,
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton("Help ❓", callback_data="help"),
+                        InlineKeyboardButton("Close ❌", callback_data="close"),
+                    ]
+                ]
+            ),
+        )
     else:
-      encoded_string = message.text.split("_")[-1]
-      file_id,share_link = await retrieve(app,Var.log_c,encoded_string)
-      await message.reply_document(
-        file_id,
-        caption = f"[(. ❛ ᴗ ❛.) Share Link 📝]({share_link})"
-      )
-
-
-def keyExists(user_id):
-    x = mycol.find_one({"_id": user_id})
-    if x is None:
-        return False
-    else:
-        return True
+        encoded_string = message.text.split("_")[-1]
+        file_id, share_link = await retrieve(app, Var.log_c, encoded_string)
+        await message.reply_document(
+            file_id, caption=f"[(. ❛ ᴗ ❛.) Share Link 📝]({share_link})"
+        )
 
 
 @app.on_message(filters.command(["auth"]) & CustomFilters.owner)
@@ -146,13 +138,10 @@ async def auth(client, message):
         if len(message.text.split()) == 1:
             return await message.reply("ID Field Empty")
         id = int(message.text.split()[-1])
-        if id in Var.AUTH_USERS["users"]:
+        if id in Var.AUTH_USERS:
             return await message.reply("User Already Authenticated !")
-        myquery = {"_id": "1"}
-        newvalues = {"$push": {"users": id}}
-        mycol.update_one(myquery, newvalues)
-        Var.AUTH_USERS = mycol.find_one({"_id": "1"})
-        print("New list :", Var.AUTH_USERS["users"])
+        await db.add_user(id)
+        await init()
         await message.reply("User Authenticated")
     except Exception as e:
         await message.reply(str(e))
@@ -164,12 +153,9 @@ async def auth(client, message):
         if len(message.text.split()) == 1:
             return await message.reply("ID Field Empty")
         id = int(message.text.split()[-1])
-        if id in Var.AUTH_USERS["users"]:
-            myquery = {"_id": "1"}
-            newvalues = {"$pull": {"users": id}}
-            mycol.update_one(myquery, newvalues)
-            Var.AUTH_USERS = mycol.find_one({"_id": "1"})
-            print("New list :", Var.AUTH_USERS["users"])
+        if id in Var.AUTH_USERS:
+            await db.delete_user(id)
+            await init()
             await message.reply("User Un-Authenticated")
         else:
             return await message.reply("User does not exist")
@@ -204,19 +190,12 @@ async def onphoto(client, message):
     & (CustomFilters.auth_users | CustomFilters.owner)
 )
 async def onname(client, message):
-    print("filename")
     user_id = message.from_user.id
     namef = await app.ask(user_id, "__Enter FileName :__")
-    await message.reply(f"Pdf Names will now be : __{namef.text}__")
-    if keyExists(user_id):
-        print("User filename exists")
-        x = mycol.find_one({"_id": user_id})
-        mycol.update_one({"_id": user_id}, {"$set": {"fname": namef.text}})
-    else:
-        print("User filename not exists")
-        mycol.insert_one({"_id": user_id, "fname": namef.text})
-    x = mycol.find_one({"_id": user_id})
-    print("Filename for ", user_id, "=", x)
+    await message.reply(f"**Pdf Names will now be :** __{namef.text}__")
+    await db.update_fname(user_id, namef.text)
+    x = await db.get_user_dict(user_id)
+    print("Filename for ", user_id, "=", x["fname"])
 
 
 @app.on_message(
@@ -251,6 +230,68 @@ async def countfiles(client, message):
         await bot_msg.edit(f"Number of images from you : {count}")
 
 
+@app.on_message(
+    filters.command(["compress"])
+    & filters.private
+    & (CustomFilters.auth_users | CustomFilters.owner)
+)
+async def compress(client, message):
+    user_id = message.from_user.id
+    if message.reply_to_message is None:
+        return await message.reply("**Reply to the pdf you want to compress...**")
+    elif (message.reply_to_message.document is None) or (
+        message.reply_to_message.document.file_name.endswith(".pdf") == False
+    ):
+        return await message.reply("**Not a pdf file ‼**")
+
+    if os.path.isdir(f"Compressed/{user_id}") or os.path.isdir(f"Compress/{user_id}"):
+        return await message.reply("Please wait for previous task.. ‼")
+
+    if not os.path.isdir(f"Compressed/{user_id}"):
+        os.makedirs(f"Compress/{user_id}")
+
+    bot_msg = await message.reply("__Trying to Compress...__")
+    try:
+      doc_from_user = message.reply_to_message
+      await doc_from_user.download(file_name=f"Compress/{user_id}/")
+      ilovepdf = ILovePdf(Var.pdf_api, verify_ssl=True)
+      task = ilovepdf.new_task("compress")
+      task.add_file(f"Compress/{user_id}/{doc_from_user.document.file_name}")
+      task.set_output_folder(f"Compressed/{user_id}")
+
+      task.execute()
+      task.download()
+      await bot_msg.edit("__Compression Done...__")
+
+    except errors.MessageNotModified:
+      await bot_msg.edit("__Compression Done ...__")
+      pass
+    
+    except Exception as e:
+      await bot_msg.edit(str(e))
+      pass
+    
+    flist = os.listdir(f"Compressed/{user_id}")
+    doc = await app.send_document(Var.log_c, f"Compressed/{user_id}/{flist[-1]}")
+    await doc.reply(
+        f"__Pdf Compress Requested By [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",
+        disable_web_page_preview=True,
+    )
+
+    encoded_string = str_to_b64(str(doc.message_id))
+    file_id, share_link = await retrieve(app, Var.log_c, encoded_string)
+    await bot_msg.edit("__Uploading Now__...")
+    await asyncio.sleep(1)
+    await message.reply_document(
+        file_id, caption=f"[(. ❛ ᴗ ❛.) Share Link 📝]({share_link})"
+    )
+
+    task.delete_current_task()
+    await bot_msg.delete()
+    shutil.rmtree(f"Compress/{user_id}")
+    shutil.rmtree(f"Compressed/{user_id}")
+    
+
 
 @app.on_message(
     filters.command(["done"])
@@ -265,45 +306,50 @@ async def ondone(client, message):
         await bot_msg.edit("No Photos sent by you !")
         return
     flist = []
-    if keyExists(user_id):
-        x = mycol.find_one({"_id": user_id})
-        pdfname = x["fname"]
-        print(pdfname)
-    else:
-        pdfname = str(user_id)
+    x = await db.get_user_dict(user_id)
+    pdfname = x["fname"]
+    pdfpath = f"{user_id}/{pdfname}.pdf"
+
+    if not os.path.isdir(str(user_id)):
+        os.makedirs(str(user_id))
+
     try:
         filelist = os.listdir(f"Photos/{user_id}")
         for file in filelist:
             flist.append(f"Photos/{user_id}/{file}")
-        with open(f"{pdfname}.pdf", "wb") as f:
+        with open(f"{pdfpath}", "wb") as f:
             f.write(img2pdf.convert([i for i in flist]))
     except Exception as e:
         print(e)
         await bot_msg.edit(str(e))
-        os.remove(f"{pdfname}.pdf")
+        shutil.rmtree(str(user_id))
     else:
         await bot_msg.edit(f"Created Pdf with {len(flist)} files ")
         await asyncio.sleep(3)
         await bot_msg.edit("Uploading ...")
         doc = await app.send_document(
-              Var.log_c,
-              f"{pdfname}.pdf", 
-              thumb=flist[0],
-              )
-        await doc.reply(f"__Pdf Requested By [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",disable_web_page_preview=True)
-        
+            Var.log_c,
+            pdfpath,
+            thumb=flist[0],
+        )
+        await doc.reply(
+            f"__Pdf Requested By [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",
+            disable_web_page_preview=True,
+        )
+
         encoded_string = str_to_b64(str(doc.message_id))
-        file_id,share_link = await retrieve(app,Var.log_c,encoded_string)
+        file_id, share_link = await retrieve(app, Var.log_c, encoded_string)
         await asyncio.sleep(1)
         await message.reply_document(
-          file_id,
-          caption = f"[(. ❛ ᴗ ❛.) Share Link 📝]({share_link})"
+            file_id, caption=f"[(. ❛ ᴗ ❛.) Share Link 📝]({share_link})"
         )
         await bot_msg.delete()
-        os.remove(f"{pdfname}.pdf")
+        shutil.rmtree(str(user_id))
         shutil.rmtree(f"Photos/{user_id}/")
 
-
-
-app.run()
-print("Stopping Bot")
+print("----------------Starting Bot-------------------")
+app.start()
+asyncio.ensure_future(init())
+idle()
+print("----------------Stopping Bot------------------")
+app.stop()

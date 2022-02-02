@@ -3,3 +3,6 @@ account.session
 poetry.lock
 pyproject.toml
 .breakpoints
+__pycache__/
+Compress
+Compressed

@@ -1,7 +1,8 @@
 pyromod
 dnspython
 Pyrogram
-pymongo
+pylovepdf
 TgCrypto
 img2pdf
 pykeyboard
+motor
