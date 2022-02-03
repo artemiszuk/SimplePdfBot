@@ -122,7 +122,7 @@ async def button(client, cmd: CallbackQuery):
 
 
 @app.on_message(
-    filters.command(["start"]) & (CustomFilters.auth_users | CustomFilters.owner)
+    filters.command(["start"]) & (CustomFilters.auth_users | CustomFilters.owner & filters.private)
 )
 async def start(client, message):
     if "_" not in message.text:
@@ -145,7 +145,7 @@ async def start(client, message):
         )
 
 
-@app.on_message(filters.command(["auth"]) & CustomFilters.owner)
+@app.on_message(filters.command(["auth"]) & CustomFilters.owner & filters.private)
 async def auth(client, message):
     try:
         if len(message.text.split()) == 1:
@@ -160,7 +160,7 @@ async def auth(client, message):
         await message.reply(str(e))
 
 
-@app.on_message(filters.command(["unauth"]) & CustomFilters.owner)
+@app.on_message(filters.command(["unauth"]) & CustomFilters.owner & filters.private)
 async def auth(client, message):
     try:
         if len(message.text.split()) == 1:
@@ -177,7 +177,7 @@ async def auth(client, message):
 
 
 @app.on_message(
-    filters.command(["help"]) & (CustomFilters.auth_users | CustomFilters.owner)
+    filters.command(["help"]) & (CustomFilters.auth_users | CustomFilters.owner & filters.private)
 )
 async def help(client, message):
     await start(client, message)
