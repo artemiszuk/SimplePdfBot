@@ -382,7 +382,7 @@ async def onconvert(client, message):
         
         flist = os.listdir(out_path)
         out_file = os.path.splitext(flist[-1])[0] + f".{exten}"
-        command_to_exec = f"cd {out_path} ; ebook-convert '{flist[-1]}' '{out_file}' --enable-heuristics ;"
+        command_to_exec = f"cd {out_path} ; ebook-convert '{flist[-1]}' '{out_file}' ;"
         print(command_to_exec)
         proc = await asyncio.create_subprocess_shell(command_to_exec)
         await proc.wait()
