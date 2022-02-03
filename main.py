@@ -1,6 +1,7 @@
 import os
 import sys
 import shutil
+import logging
 import img2pdf
 import asyncio
 import traceback
@@ -25,7 +26,12 @@ bot_token = os.environ.get("BOT_TOKEN")
 # p = subprocess.Popen(["python3", "-m", "http.server"])
 app = Client("account", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
-
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+LOGGER = logging.getLogger(__name__)
+logging.getLogger("pyrogram").setLevel(logging.WARNING)
 
 
 class Var(object):
@@ -49,16 +55,16 @@ class CustomFilters:
 
 
 async def init():
-    await custom_logger("----------------Starting Bot-------------------")
-    text = "\n-------------------------------------------"
+    await custom_logger("--------Starting Bot--------")
+    text = "\n-----------------------------"
     text += "\nInitializing User list"
     Var.AUTH_USERS = list(await db.get_all_users())
     text += f"\nAuthenticated Users List = {Var.AUTH_USERS}" 
-    text += "\n-------------------------------------------"
+    text += "\n----------------------------"
     await custom_logger(text)
 
 async def custom_logger(msg):
-  sys.stdout.write(msg)
+  LOGGER.info(msg)
   await app.send_message(Var.log_c,f"`{msg}`")
 
 @app.on_callback_query()
@@ -186,7 +192,7 @@ async def onphoto(client, message):
     if message.photo is None:
         exten = os.path.splitext(message.document.file_name)[1]
     if message.photo is None and exten not in (".jpg", ".jpeg"):
-        sys.stdout.write("Not a Photo")
+        LOGGER.info("Not a Photo")
         return
     await message.download(file_name=f"Photos/{message.from_user.id}/")
 
@@ -202,7 +208,7 @@ async def onname(client, message):
     await message.reply(f"**Pdf Names will now be :** __{namef.text}__")
     await db.update_fname(user_id, namef.text)
     x = await db.get_user_dict(user_id)
-    sys.stdout.write("Filename for ", user_id, "=", x["fname"])
+    LOGGER.info("Filename for ", user_id, "=", x["fname"])
 
 
 @app.on_message(
@@ -359,7 +365,7 @@ async def ondone(client, message):
     & (CustomFilters.auth_users | CustomFilters.owner)
 )
 async def onconvert(client, message):
-    sys.stdout.write(os.getcwd())
+    LOGGER.info(os.getcwd())
     user_id = message.from_user.id
     input_formats = ["azw","azw3", "azw4", "cbz", "cbr", "cb7", "cbc", "chm", "djvu", "docx", "epub", "fb2", "fbz", "html", "htmlz", "lit", "lrf", "mobi", "odt", "pdf", "prc", "pdb", "pml", "rb", "rtf", "snb", "tcr", "txt", "txtz"]
     output_formats = ['azw3', 'epub', 'docx', 'fb2', 'htmlz', 'oeb', 'lit', 'lrf', 'mobi', 'pdb', 'pmlz', 'rb', 'pdf', 'rtf', 'snb', 'tcr', 'txt', 'txtz', 'zip']
@@ -389,7 +395,7 @@ async def onconvert(client, message):
         flist = os.listdir(out_path)
         out_file = os.path.splitext(flist[-1])[0] + f".{exten}"
         command_to_exec = f"cd {out_path} ; ebook-convert '{flist[-1]}' '{out_file}' ;"
-        sys.stdout.write(command_to_exec)
+        LOGGER.info(command_to_exec)
         proc = await asyncio.create_subprocess_shell(command_to_exec)
         await proc.wait()
         
@@ -420,5 +426,5 @@ async def onconvert(client, message):
 app.start()
 asyncio.ensure_future(init())
 idle()
-#await custom_logger("----------------Stopping Bot------------------")
+LOGGER.info("--------Stopping Bot----------")
 app.stop()
