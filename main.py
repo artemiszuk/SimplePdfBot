@@ -28,9 +28,9 @@ app = Client("account", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
 class Var(object):
     AUTH_USERS = []
-    log_c = int(os.environ.get("LOG_CHANNEL"))
+    int(os.environ.get("LOG_CHANNEL"))
     pdf_api = os.environ.get("ILOVEPDF_API")
-
+    owner = os.environ.get("OWNER_ID")
 
 class Messages:
     startm = "**📌MAIN MENU**\n\nHi ! This is PDF Bot \n\n__Click Help for how to use__"
@@ -346,6 +346,69 @@ async def ondone(client, message):
         await bot_msg.delete()
         shutil.rmtree(str(user_id))
         shutil.rmtree(f"Photos/{user_id}/")
+
+@app.on_message(
+    filters.command(["convert"])
+    & filters.private
+    & (CustomFilters.auth_users | CustomFilters.owner)
+)
+async def onconvert(client, message):
+    print(os.getcwd())
+    user_id = message.from_user.id
+    input_formats = ["azw","azw3", "azw4", "cbz", "cbr", "cb7", "cbc", "chm", "djvu", "docx", "epub", "fb2", "fbz", "html", "htmlz", "lit", "lrf", "mobi", "odt", "pdf", "prc", "pdb", "pml", "rb", "rtf", "snb", "tcr", "txt", "txtz"]
+    output_formats = ['azw3', 'epub', 'docx', 'fb2', 'htmlz', 'oeb', 'lit', 'lrf', 'mobi', 'pdb', 'pmlz', 'rb', 'pdf', 'rtf', 'snb', 'tcr', 'txt', 'txtz', 'zip']
+    
+    if os.path.isdir(f"Convert/{user_id}"):
+        return await message.reply("**Wait Until Previous TAsk finishes ‼**")
+
+    if message.reply_to_message is None:
+        return await message.reply(f"**Reply to the file you want to convert\n\nList Of Input Formats **:\n{input_formats}:\n **List Of Output Formats** : \n{output_formats}")
+    elif (message.reply_to_message.document is None) or (
+        os.path.splitext(message.reply_to_message.document.file_name)[-1][1:] not in input_formats
+    ):
+        return await message.reply("**Not a Valid Input file ‼**")
+    elif (len(message.text.split()) != 2 or message.text.split()[1] not in output_formats):
+        return await message.reply("**Not a Valid Command  ‼**")
+    exten = message.text.split()[1]
+
+    if exten == os.path.splitext(message.reply_to_message.document.file_name)[-1][1:]:
+        return await message.reply("**Output Format Cannot be Same ‼**")
+    out_path = ""
+    bot_msg = await message.reply(f"__Trying to convert to {exten} 📝...__")
+    doc = message.reply_to_message
+    try:
+        out_path = f"Convert/{user_id}/"
+        await doc.download(file_name=out_path)
+        
+        flist = os.listdir(out_path)
+        out_file = os.path.splitext(flist[-1])[0] + f".{exten}"
+        command_to_exec = f"cd {out_path} ; ebook-convert {flist[-1]} {out_file} ;"
+        print(command_to_exec)
+        proc = await asyncio.create_subprocess_shell(command_to_exec)
+        await proc.wait()
+        
+        out_path += out_file
+    except Exception as e :
+        await bot_msg.edit(str(e))
+    print(out_path)
+    await bot_msg.edit("Uploading 📤...")
+    doc = await app.send_document(
+            Var.log_c,
+            out_path
+        )
+    await doc.reply(
+            f"__Pdf Conversion Requested By [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",
+            disable_web_page_preview=True,
+        )
+    encoded_string = str_to_b64(str(doc.message_id))
+    file_id, share_link = await retrieve(app, Var.log_c, encoded_string)
+    await asyncio.sleep(1)
+    await message.reply_document(
+        file_id, caption=f"[(. ❛ ᴗ ❛.) Share Link 📝]({share_link})"
+    )
+    await bot_msg.delete()
+    shutil.rmtree(f"Convert/{user_id}/")
+
 
 print("----------------Starting Bot-------------------")
 app.start()
