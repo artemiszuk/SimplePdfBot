@@ -1,7 +1,9 @@
 import os
+import sys
 import shutil
 import img2pdf
 import asyncio
+import traceback
 from handlers.database import db
 from pylovepdf.ilovepdf import ILovePdf
 import subprocess
@@ -47,12 +49,17 @@ class CustomFilters:
 
 
 async def init():
-    print("-------------------------------------------")
-    print("Initializing User list")
+    await custom_logger("----------------Starting Bot-------------------")
+    text = "\n-------------------------------------------"
+    text += "\nInitializing User list"
     Var.AUTH_USERS = list(await db.get_all_users())
-    print("Authenticated Users List = ", Var.AUTH_USERS)
-    print("-------------------------------------------")
+    text += f"\nAuthenticated Users List = {Var.AUTH_USERS}" 
+    text += "\n-------------------------------------------"
+    await custom_logger(text)
 
+async def custom_logger(msg):
+  sys.stdout.write(msg)
+  await app.send_message(Var.log_c,f"`{msg}`")
 
 @app.on_callback_query()
 async def button(client, cmd: CallbackQuery):
@@ -179,7 +186,7 @@ async def onphoto(client, message):
     if message.photo is None:
         exten = os.path.splitext(message.document.file_name)[1]
     if message.photo is None and exten not in (".jpg", ".jpeg"):
-        print("Not a Photo")
+        sys.stdout.write("Not a Photo")
         return
     await message.download(file_name=f"Photos/{message.from_user.id}/")
 
@@ -195,7 +202,7 @@ async def onname(client, message):
     await message.reply(f"**Pdf Names will now be :** __{namef.text}__")
     await db.update_fname(user_id, namef.text)
     x = await db.get_user_dict(user_id)
-    print("Filename for ", user_id, "=", x["fname"])
+    sys.stdout.write("Filename for ", user_id, "=", x["fname"])
 
 
 @app.on_message(
@@ -319,9 +326,8 @@ async def ondone(client, message):
             flist.append(f"Photos/{user_id}/{file}")
         with open(f"{pdfpath}", "wb") as f:
             f.write(img2pdf.convert([i for i in flist]))
-    except Exception as e:
-        print(e)
-        await bot_msg.edit(str(e))
+    except Exception :
+        await custom_logger(traceback.format_exc())
         shutil.rmtree(str(user_id))
     else:
         await bot_msg.edit(f"Created Pdf with {len(flist)} files ")
@@ -353,7 +359,7 @@ async def ondone(client, message):
     & (CustomFilters.auth_users | CustomFilters.owner)
 )
 async def onconvert(client, message):
-    print(os.getcwd())
+    sys.stdout.write(os.getcwd())
     user_id = message.from_user.id
     input_formats = ["azw","azw3", "azw4", "cbz", "cbr", "cb7", "cbc", "chm", "djvu", "docx", "epub", "fb2", "fbz", "html", "htmlz", "lit", "lrf", "mobi", "odt", "pdf", "prc", "pdb", "pml", "rb", "rtf", "snb", "tcr", "txt", "txtz"]
     output_formats = ['azw3', 'epub', 'docx', 'fb2', 'htmlz', 'oeb', 'lit', 'lrf', 'mobi', 'pdb', 'pmlz', 'rb', 'pdf', 'rtf', 'snb', 'tcr', 'txt', 'txtz', 'zip']
@@ -383,14 +389,14 @@ async def onconvert(client, message):
         flist = os.listdir(out_path)
         out_file = os.path.splitext(flist[-1])[0] + f".{exten}"
         command_to_exec = f"cd {out_path} ; ebook-convert '{flist[-1]}' '{out_file}' ;"
-        print(command_to_exec)
+        sys.stdout.write(command_to_exec)
         proc = await asyncio.create_subprocess_shell(command_to_exec)
         await proc.wait()
         
         out_path += out_file
     except Exception as e :
         await bot_msg.edit(str(e))
-    print(out_path)
+    #print(out_path)
     await bot_msg.edit("Uploading 📤...")
     doc = await app.send_document(
             Var.log_c,
@@ -410,9 +416,9 @@ async def onconvert(client, message):
     shutil.rmtree(f"Convert/{user_id}/")
 
 
-print("----------------Starting Bot-------------------")
+
 app.start()
 asyncio.ensure_future(init())
 idle()
-print("----------------Stopping Bot------------------")
+#await custom_logger("----------------Stopping Bot------------------")
 app.stop()
