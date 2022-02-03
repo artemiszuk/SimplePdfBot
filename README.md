@@ -25,6 +25,7 @@ This is a Telegram bot to create pdf along with many other utils
 - `API_ID` - Get this from [@TeleORG_Bot](https://t.me/TeleORG_Bot)
 - `API_HASH` - Get this from [@TeleORG_Bot](https://t.me/TeleORG_Bot)
 - `BOT_TOKEN` - Get this from [@BotFather](https://t.me/BotFather)
+- `OWNER_ID` - To add / remove users
 - `LOG_CHANNEL` - A Telegram Channel/Group ID.
 	- Make a Channel for Logging . We will use that as Database. Channel must be Private! Else you will be Copyright by [Telegram DMCA](https://t.me/dmcatelegram)!
 - `MONGO_URI` - MongoDB Database URI

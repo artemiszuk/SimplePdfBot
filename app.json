@@ -10,7 +10,6 @@
         "API_ID": {"description": "Get this value from https://my.telegram.org"},
         "API_HASH": {"description": "Get this value from https://my.telegram.org"},
         "BOT_TOKEN": {"description": "Get this value from @BotFather"},
-        "AUTH_USERS": {"description": "Chat Id's/User Id's Seperated by space"},
         "LOG_CHANNEL": {
             "description": "Add Bot as admin to any Dump Channel and enter id"
         },
