@@ -362,7 +362,7 @@ async def onconvert(client, message):
         return await message.reply("**Wait Until Previous TAsk finishes ‼**")
 
     if message.reply_to_message is None:
-        return await message.reply(f"**Reply to the file you want to convert\n\nList Of Input Formats **:\n{input_formats}:\n **List Of Output Formats** : \n{output_formats}")
+        return await message.reply(f"**Reply `/convert <format>` to the file you want to convert\n\nList Of Input Formats **:\n{input_formats}:\n\n **List Of Output Formats** : \n{output_formats}")
     elif (message.reply_to_message.document is None) or (
         os.path.splitext(message.reply_to_message.document.file_name)[-1][1:] not in input_formats
     ):
@@ -382,7 +382,7 @@ async def onconvert(client, message):
         
         flist = os.listdir(out_path)
         out_file = os.path.splitext(flist[-1])[0] + f".{exten}"
-        command_to_exec = f"cd {out_path} ; ebook-convert {flist[-1]} {out_file} ;"
+        command_to_exec = f"cd {out_path} ; ebook-convert '{flist[-1]}' '{out_file}' ;"
         print(command_to_exec)
         proc = await asyncio.create_subprocess_shell(command_to_exec)
         await proc.wait()
@@ -397,7 +397,7 @@ async def onconvert(client, message):
             out_path
         )
     await doc.reply(
-            f"__Pdf Conversion Requested By [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",
+            f"__{exten} Conversion Requested By [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",
             disable_web_page_preview=True,
         )
     encoded_string = str_to_b64(str(doc.message_id))
