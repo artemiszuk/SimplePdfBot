@@ -28,7 +28,7 @@ app = Client("account", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
 class Var(object):
     AUTH_USERS = []
-    int(os.environ.get("LOG_CHANNEL"))
+    log_c = int(os.environ.get("LOG_CHANNEL"))
     pdf_api = os.environ.get("ILOVEPDF_API")
     owner = os.environ.get("OWNER_ID")
 
