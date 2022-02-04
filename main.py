@@ -142,7 +142,7 @@ async def start(client, message):
         msg_id = int(b64_to_str(encoded_string))
         await app.send_message(
           Var.log_c,
-          f"__This file was requested by [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",
+          f"__This file was requested by {message.from_user.mention()}__",
           reply_to_message_id=msg_id,
           disable_web_page_preview=True
         )
@@ -294,7 +294,7 @@ async def compress(client, message):
     flist = os.listdir(f"Compressed/{user_id}")
     doc = await app.send_document(Var.log_c, f"Compressed/{user_id}/{flist[-1]}")
     await doc.reply(
-        f"__Pdf Compress Requested By [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",
+        f"__Pdf Compress Requested By {message.from_user.mention()}__",
         disable_web_page_preview=True,
     )
 
@@ -352,7 +352,7 @@ async def ondone(client, message):
             thumb=flist[0],
         )
         await doc.reply(
-            f"__Pdf Requested By [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",
+            f"__Pdf Creation Requested By {message.from_user.mention()}__",
             disable_web_page_preview=True,
         )
 
@@ -416,7 +416,7 @@ async def onconvert(client, message):
             out_path
         )
     await doc.reply(
-            f"__Conversion to {exten} Requested By [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",
+            f"__Conversion to {exten} Requested By {message.from_user.mention()}__",
             disable_web_page_preview=True,
         )
     encoded_string = str_to_b64(str(doc.message_id))
@@ -431,7 +431,9 @@ async def onconvert(client, message):
 
 
 app.start()
-asyncio.ensure_future(init())
+loop = asyncio.get_event_loop()
+loop.run_until_complete(init())
+#asyncio.ensure_future(init())
 idle()
 LOGGER.info("--------Stopping Bot----------")
 app.stop()
