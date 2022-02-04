@@ -139,6 +139,13 @@ async def start(client, message):
         )
     else:
         encoded_string = message.text.split("_")[-1]
+        msg_id = int(b64_to_str(encoded_string))
+        await app.send_message(
+          Var.log_c,
+          f"__This file was requested by [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",
+          reply_to_message_id=msg_id,
+          disable_web_page_preview=True
+        )
         file_id, share_link = await retrieve(app, Var.log_c, encoded_string)
         await message.reply_document(
             file_id, caption=f"[(. ❛ ᴗ ❛.) Share Link 📝]({share_link})"
