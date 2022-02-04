@@ -409,7 +409,7 @@ async def onconvert(client, message):
             out_path
         )
     await doc.reply(
-            f"__{exten} Conversion Requested By [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",
+            f"__Conversion to {exten} Requested By [{message.from_user.first_name}](https://t.me/{message.from_user.username})__",
             disable_web_page_preview=True,
         )
     encoded_string = str_to_b64(str(doc.message_id))
