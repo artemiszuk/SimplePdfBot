@@ -161,7 +161,7 @@ async def auth(client, message):
         if id in Var.AUTH_USERS:
             return await message.reply("User Already Authenticated !")
         await db.add_user(id)
-        await init()
+        Var.AUTH_USERS = list(await db.get_all_users())
         await message.reply("User Authenticated")
     except Exception as e:
         await message.reply(str(e))
@@ -175,7 +175,7 @@ async def auth(client, message):
         id = int(message.text.split()[-1])
         if id in Var.AUTH_USERS:
             await db.delete_user(id)
-            await init()
+            Var.AUTH_USERS = list(await db.get_all_users())
             await message.reply("User Un-Authenticated")
         else:
             return await message.reply("User does not exist")
