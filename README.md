@@ -29,7 +29,7 @@ This is a Telegram bot to create pdf along with many other utils
 - `LOG_CHANNEL` - A Telegram Channel/Group ID.
 	- Make a Channel for Logging . We will use that as Database. Channel must be Private! Else you will be Copyright by [Telegram DMCA](https://t.me/dmcatelegram)!
 - `MONGO_URI` - MongoDB Database URI
-	- This for Saving UserIDs. When you will Broadcast, bot will forward the Broadcast to DB Users.
+	- This for Saving UserIDs and their respective custom filenames.
 - `ILOVEPDF_API` - To Compress pdf files get api from [ilovePDF](https://developer.ilovepdf.com/)
 
 ### Deploy Now:
